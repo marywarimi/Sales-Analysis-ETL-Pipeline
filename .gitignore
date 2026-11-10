@@ -1,0 +1,9 @@
+# Python junk
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+
+#Raw zip and database files
+*.zip
+*.db
+*.sqlite
