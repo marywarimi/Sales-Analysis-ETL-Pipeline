@@ -1,176 +1,321 @@
 # Sales Analysis ETL Pipeline
 
-A  data pipeline that takes the Sample Superstore sales data, cleans it with Python, stores it in a SQL database, and finds out where the business makes and loses money. Apache Airflow runs the pipeline automatically, and a Power BI dashboard shows the results.
+### From raw sales data to business insights — with Python, SQL, Airflow and Power BI
 
-**ETL** means **E**xtract (read the data), **T**ransform (clean it), **L**oad (save it). I run all three steps with one command.
+**Sales growth does not always mean profit growth.**
 
-## What this project does
+A business can sell more, offer bigger discounts, and still lose money on the products customers are buying.
 
-1. **Extract:** reads the raw CSV (9,994 rows, one row per product line in an order).
-2. **Transform:** fixes dates and postal codes, and adds three new columns (Order Year, Order Month, Shipping Days).
-3. **Load:** saves a clean CSV and a SQLite database with a `sales` table.
-4. **SQL checks:** runs 7 data quality checks. Every check passes with 0 bad rows.
-5. **SQL cleaning:** builds a `sales_clean` table with three extra columns: `discount_pct`, `profit_margin` and `discount_band`.
+This project builds an end-to-end data pipeline using the Sample Superstore dataset to investigate a practical business question:
 
-An **Apache Airflow** DAG runs these steps in order, once a day. A **Power BI** dashboard shows the findings.
+**Where is the business making money, where is it losing money, and what role do discounts play in profitability?**
 
-## Tools used
+I built a pipeline that transforms raw sales records into structured, quality-checked data, automates the workflow with Apache Airflow, and presents the findings through an interactive Power BI dashboard.
 
-Python, pandas, SQLite (sqlite3), SQL, Jupyter notebooks, Apache Airflow 3.4 (running in WSL2 Ubuntu), Power BI Desktop, Git and GitHub.
+The goal was not just to analyze sales, but to build a repeatable process that turns raw data into information a business can use.
 
-## Data
+---
 
-Sample Superstore dataset from Kaggle. It has 21 original columns, 4 regions, 17 sub-categories and orders from 2014 to 2017.
+## The Business Problem
 
-## Key findings
+Sales teams often focus on revenue, but revenue alone does not tell the whole story.
 
-**Yearly sales** grew over time, with a small dip in 2015.
+A product may generate high sales while contributing very little profit. Aggressive discounting may increase order volume while quietly reducing profitability. Regional performance may also differ significantly.
+
+Without a reliable data pipeline and clear reporting, these patterns can be difficult to identify.
+
+This project explores four business questions:
+
+- How has sales performance changed over time?
+- Which regions contribute the most and least profit?
+- Which product categories and sub-categories are profitable or loss-making?
+- At what discount levels does profitability begin to deteriorate?
+
+The analysis focuses on identifying patterns in the data rather than assuming that higher sales automatically indicate better business performance.
+
+---
+
+## Project Overview
+
+I developed a complete ETL workflow that takes raw Superstore sales data through extraction, transformation, loading, SQL validation, and reporting.
+
+The pipeline:
+
+1. Extracts the raw sales dataset.
+2. Cleans and transforms the data using Python and pandas.
+3. Loads the processed data into a SQLite database.
+4. Runs SQL data quality checks.
+5. Creates a business-ready `sales_clean` table.
+6. Automates the workflow using Apache Airflow.
+7. Connects the cleaned data to Power BI for business analysis.
+
+The pipeline can also be executed independently of Airflow using a single Python command.
+
+---
+
+## Key Business Findings
+
+The analysis revealed several important patterns in the dataset.
+
+### 1. Sales recovered after a dip in 2015
+
+Sales declined slightly in 2015 before increasing in the following years.
 
 | Year | Sales |
-|------|-------|
-| 2014 | about 484K |
-| 2015 | about 471K |
-| 2016 | about 609K |
-| 2017 | about 733K |
+|---|---:|
+| 2014 | ~$484K |
+| 2015 | ~$471K |
+| 2016 | ~$609K |
+| 2017 | ~$733K |
 
-**Regions:** the West makes the most profit. The Central region keeps the least, about 8 profit for every 100 sold.
+The dataset shows a strong upward sales trend from 2015 to 2017.
+
+### 2. Profitability varies significantly by region
+
+The West generated the highest profit, while the Central region generated the lowest.
 
 | Region | Sales | Profit |
-|--------|-------|--------|
-| West | 725K | 108K |
-| East | 679K | 92K |
-| Central | 501K | 40K |
-| South | 392K | 47K |
+|---|---:|---:|
+| West | ~$725K | ~$108K |
+| East | ~$679K | ~$92K |
+| Central | ~$501K | ~$40K |
+| South | ~$392K | ~$47K |
 
-**Products:**
-- Tables lost about 17.7K (average discount 26%).
-- Bookcases lost about 3.5K and Supplies lost about 1.2K.
-- Machines sold 189K but made only about 3.4K profit (average discount 31%).
-- Copiers made the most profit, about 55.6K.
+The Central region retained approximately **8% of its sales as profit**, making it an important area for further investigation.
 
-**Discounts:**
-- Items sold with 0% to 20% discount made about 421K profit in total.
-- Every discount level from 30% up lost money: about 1,393 items lost about 135K in total.
-- Tables with no discount made about 13.3K profit, but Tables sold at 30% off or more lost about 31K.
+### 3. High sales do not always translate into high profit
 
-**In short:** in this data, deep discounts are where the money is lost, and the worst hit are Tables and Machines.
+Some product sub-categories generated substantial sales but struggled with profitability.
 
-## Power BI dashboard
+- **Tables** recorded approximately $17.7K in losses.
+- **Bookcases** lost approximately $3.5K.
+- **Supplies** lost approximately $1.2K.
+- **Machines** generated approximately $189K in sales but only around $3.4K in profit.
+- **Copiers** generated the highest profit among the sub-categories, at approximately $55.6K.
 
-I built the dashboard from `data/processed/superstore_clean.csv`.
+These findings demonstrate why analyzing profit alongside sales is essential.
 
-![Superstore sales dashboard](powerbi/dashboard.jpeg)
+### 4. Deep discounts were associated with losses
 
-It has 4 charts and a region filter:
+The discount analysis revealed a clear pattern:
 
-- **Sales by year:** sales grew from 2014 to 2017, with a small dip in 2015.
-- **Profit by region:** the West makes the most profit and the Central region the least.
-- **Profit by sub-category:** the red bars show the products that lose money (Tables, Bookcases and Supplies).
-- **Profit by discount level:** profit falls below zero at every discount level of 30% and above.
-- **Region slicer:** click a region to filter the charts.
+- Products sold with discounts between 0% and 20% generated approximately $421K in total profit.
+- Discount levels of 30% and above were associated with losses in the dataset.
+- Approximately 1,393 items sold at these higher discount levels recorded a combined loss of about $135K.
 
-The file is `powerbi/superstore_dashboard.pbix` and it opens in Power BI Desktop.
+Tables were particularly affected. While Tables sold without a discount generated approximately $13.3K in profit, those sold at discounts of 30% or more recorded approximately $31K in losses.
+
+**Business takeaway:** The findings suggest that discounting deserves closer attention, particularly for loss-making products. Discounts should be evaluated against profitability, not sales volume alone.
+
+---
+
+## Power BI Dashboard
+
+The Power BI dashboard turns the analysis into a visual summary of business performance.
+
+![Superstore Sales Dashboard](powerbi/dashboard.jpeg)
+
+The dashboard includes:
+
+- **Sales by Year** — tracks sales performance from 2014 to 2017.
+- **Profit by Region** — compares regional profitability.
+- **Profit by Sub-Category** — highlights profitable and loss-making products.
+- **Profit by Discount Level** — shows how profit changes across discount levels.
+- **Region Slicer** — allows users to filter the visuals by region.
+
+The dashboard was built using the processed dataset:
+
+`data/processed/superstore_clean.csv`
+
+Power BI file:
+
+`powerbi/superstore_dashboard.pbix`
+
+---
+
+## Data Pipeline Architecture
+
+The project follows a structured ETL workflow:
+
+**Extract → Transform → Load → Validate → Analyze**
+
+### Extract
+
+Reads the raw Sample Superstore CSV containing 9,994 records and 21 original columns.
+
+### Transform
+
+Uses Python and pandas to:
+
+- Clean and standardize the data.
+- Handle date fields.
+- Preserve postal codes in the correct format.
+- Create `Order Year`, `Order Month`, and `Shipping Days`.
+
+### Load
+
+Saves the transformed dataset as a clean CSV and loads it into SQLite.
+
+The database contains a `sales` table for the processed records.
+
+### Validate and Clean with SQL
+
+Seven SQL data quality checks validate the loaded data.
+
+All seven checks passed with **zero bad rows**.
+
+The SQL workflow then creates a `sales_clean` table containing additional business features:
+
+- `discount_pct`
+- `profit_margin`
+- `discount_band`
+
+These features support the profitability and discount analysis.
+
+---
 
 ## Automation with Apache Airflow
 
-Apache Airflow runs the pipeline for me, in order, without typing any commands. The DAG is in `dags/sales_etl_dag.py` and is called `sales_etl_pipeline`.
+To make the workflow repeatable, I created an Apache Airflow DAG named:
 
-It has 4 tasks, one after the other:
+`sales_etl_pipeline`
 
-1. `extract_data`: runs `extract()` from `src/etl.py`
-2. `transform_data`: runs `transform(df)`
-3. `load_data`: runs `load(df)`
-4. `clean_data`: runs `clean_with_sql()` (7 quality checks, then the `sales_clean` table)
+The DAG contains four sequential tasks:
 
-Airflow tasks run separately, so each task saves its table to a temporary file (`/tmp/sales_etl`) for the next task to read. The DAG calls the functions already in `src/etl.py`, so `python src/etl.py` still works on its own. The DAG runs once a day (`@daily`) and does not run the missed days (`catchup=False`).
+| Task | Responsibility |
+|---|---|
+| `extract_data` | Extracts the raw dataset |
+| `transform_data` | Cleans and transforms the records |
+| `load_data` | Loads the processed data |
+| `clean_data` | Runs SQL quality checks and creates the clean table |
 
-All 4 tasks finish successfully, in about 27 seconds for the whole run.
+The DAG runs daily using the `@daily` schedule.
 
-### How to run it with Airflow
+I configured Airflow to run locally through **WSL2 and Ubuntu**, since my development environment is Windows.
 
-Airflow does not run on plain Windows, so I use **WSL2** (Linux inside Windows) with Ubuntu. Inside Ubuntu:
+Each task passes its output to the next task through temporary files, keeping the workflow organized and allowing the pipeline functions to run independently.
 
-```bash
-# 1. Tools and a virtual environment
-sudo apt update
-sudo apt install -y python3-venv python3-pip
-python3 -m venv ~/airflow-venv
-source ~/airflow-venv/bin/activate
+A complete DAG run finished successfully in approximately **27 seconds** in my local environment.
 
-# 2. Install Airflow and pandas with the official constraints file
-AIRFLOW_VERSION=3.4.0
-PYTHON_VERSION="$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
-CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
-pip install "apache-airflow==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
-pip install pandas --constraint "${CONSTRAINT_URL}"
+Because this is a local setup, scheduled runs depend on Airflow being running on my computer.
 
-# 3. Point Airflow at this project's dags folder (change YOUR_NAME)
-sed -i 's|^dags_folder = .*|dags_folder = /mnt/c/Users/YOUR_NAME/Desktop/Sales-Analysis-ETL-Pipeline/dags|' ~/airflow/airflow.cfg
+---
 
-# 4. Start Airflow
-airflow standalone
-```
+## Technology Stack
 
-Then:
+| Tool | Purpose |
+|---|---|
+| Python | ETL logic and data processing |
+| pandas | Data cleaning and transformation |
+| SQLite | Local relational database |
+| SQL | Data quality checks and business analysis |
+| Apache Airflow | Workflow orchestration |
+| Power BI | Interactive business dashboard |
+| Jupyter Notebook | Data exploration and analysis |
+| Git & GitHub | Version control and project documentation |
+| WSL2 / Ubuntu | Local Airflow environment |
 
-1. Open `http://localhost:8080` in a browser.
-2. Log in with the username `admin` and the password saved in `~/airflow/simple_auth_manager_passwords.json.generated`.
-3. Find `sales_etl_pipeline`, switch it on, and click **Trigger**.
+---
 
-This is a local setup, so the daily schedule only runs while Airflow is running on my computer.
-
-## Project structure
+## Project Structure
 
 ```text
 Sales-Analysis-ETL-Pipeline/
 ├── data/
-│   ├── raw/          # original superstore.csv
-│   └── processed/    # superstore_clean.csv
+│   ├── raw/
+│   └── processed/
 ├── notebooks/
 │   ├── 01_extract_and_explore.ipynb
 │   └── 02_sql_analysis.ipynb
 ├── src/
-│   └── etl.py        # runs the whole pipeline
+│   └── etl.py
 ├── sql/
 │   ├── 01_data_quality_checks.sql
 │   └── 02_create_sales_clean.sql
 ├── dags/
-│   └── sales_etl_dag.py   # Airflow DAG
+│   └── sales_etl_dag.py
 ├── powerbi/
 │   ├── superstore_dashboard.pbix
 │   └── dashboard.jpeg
-└── tests/            # coming
+└── tests/
 ```
 
-## How to run it (without Airflow)
+---
 
-1. Download or clone the project.
-2. Make and turn on a virtual environment (Windows PowerShell):
+## How to Run the Pipeline
+
+### Run without Airflow
+
+Clone the repository:
+
+```bash
+git clone https://github.com/marywarimi/Sales-Analysis-ETL-Pipeline.git
+cd Sales-Analysis-ETL-Pipeline
+```
+
+Create and activate a virtual environment:
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
+```
+
+Install the required packages:
+
+```bash
 pip install pandas jupyter
 ```
 
-3. Run the pipeline:
+Run the ETL pipeline:
 
-```powershell
+```bash
 python src/etl.py
 ```
 
-This rebuilds the database `data/superstore.db` (it stays on my computer and is not uploaded to GitHub) and the clean CSV.
+The pipeline rebuilds the processed CSV and SQLite database locally.
 
-## What's next
+### Run with Airflow
 
-- [x] Notebook 01: extract, transform, load
-- [x] Notebook 02: SQL analysis
-- [x] ETL script in `src/etl.py`
-- [x] SQL quality checks and `sales_clean` table
-- [x] Power BI dashboard
-- [x] Apache Airflow DAG to run the pipeline automatically
-- [ ] Add tests with pytest
+Airflow is configured to run through WSL2 Ubuntu.
 
-## Author
+The DAG is located at:
 
-Mary. GitHub: [marywarimi](https://github.com/marywarimi)
+`dags/sales_etl_dag.py`
+
+After starting the local Airflow instance, the pipeline can be triggered through the Airflow web interface.
+
+---
+
+## What I Learned
+
+This project strengthened my understanding of how data engineering and business analysis work together.
+
+I gained practical experience in:
+
+- Designing a repeatable ETL workflow.
+- Cleaning and transforming real-world structured data.
+- Loading data into a relational database.
+- Writing SQL validation and transformation queries.
+- Building business-focused features.
+- Orchestrating tasks with Apache Airflow.
+- Connecting analytical data to Power BI.
+- Translating data patterns into business questions.
+
+More importantly, I learned that a data pipeline is not just about moving data from one place to another. It is about making data reliable, accessible, and useful for decision-making.
+
+---
+
+## Future Improvements
+
+- [ ] Add automated tests using pytest.
+- [ ] Improve pipeline logging and error handling.
+- [ ] Add pipeline monitoring and failure notifications.
+- [ ] Explore deployment beyond the local environment.
+
+---
+
+## About
+
+**Mary Warimi**  
+
+GitHub: [marywarimi](https://github.com/marywarimi)
